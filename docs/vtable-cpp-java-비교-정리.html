@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>vtable C++ Java 비교 정리</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --text: #1f2933;
+      --muted: #52606d;
+      --border: #d9e2ec;
+      --accent: #2457c5;
+      --code-bg: #0f172a;
+      --code-fg: #e2e8f0;
+      --thead: #eef2ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+    .wrap {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 32px 20px 64px;
+    }
+    h1, h2, h3 { line-height: 1.35; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.4rem; }
+    h2 {
+      margin-top: 2.4rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid var(--border);
+    }
+    h3 { margin-top: 1.6rem; }
+    p, li { color: var(--text); }
+    .lead { color: var(--muted); }
+    nav {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin: 20px 0 28px;
+    }
+    nav a { color: var(--accent); text-decoration: none; }
+    nav a:hover { text-decoration: underline; }
+    nav ol { margin: 0; padding-left: 1.2rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card);
+      margin: 1rem 0 1.4rem;
+      font-size: 0.95rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--thead); }
+    pre, .ascii {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      border-radius: 10px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-size: 0.86rem;
+      line-height: 1.55;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9em;
+    }
+    p code, li code, td code, th code {
+      background: #e8eefc;
+      color: #1e3a8a;
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+    }
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+    }
+    .mermaid {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      margin: 1rem 0;
+    }
+    .note {
+      background: #fff7ed;
+      border-left: 4px solid #f97316;
+      padding: 10px 14px;
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>vtable C++ Java 비교 정리</h1>
+    <p class="lead">
+      Qt <code>connect</code>에서 멤버 함수 주소를 넘기는 이유부터,
+      C++ / Java의 가상 함수 테이블(vtable)까지 정리한 문서입니다.
+    </p>
+    <p class="lead">관련 예제 코드는 <code>section02/P03_GUI_app</code>의 <code>connect</code> 호출입니다.</p>
+<pre><code>connect(ui-&gt;pushButton, &amp;QPushButton::clicked, this, &amp;Widget::pushButtonClick);</code></pre>
+
+    <nav>
+      <strong>목차</strong>
+      <ol>
+        <li><a href="#s1">Qt connect와 멤버 함수 주소</a></li>
+        <li><a href="#s2">정적 멤버 함수와 비정적 멤버 함수</a></li>
+        <li><a href="#s3">함수 코드는 클래스에 하나, 데이터는 인스턴스마다</a></li>
+        <li><a href="#s4">C++ / Java / C# 메모리 구조 비교</a></li>
+        <li><a href="#s5">가상 함수와 vtable</a></li>
+        <li><a href="#s6">Animal / Dog 예제로 보는 vtable</a></li>
+        <li><a href="#s7">비가상 bark()는 vtable에 들어가지 않는다</a></li>
+        <li><a href="#s8">Java의 method table</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="s1">1. Qt connect와 멤버 함수 주소</h2>
+    <h3>네 번째 인자를 <code>this-&gt;pushButtonClick</code>으로 쓰면 안 되는 이유</h3>
+    <p><code>connect</code>의 함수 포인터 오버로드는 대략 다음 의미를 가집니다.</p>
+    <table>
+      <thead>
+        <tr><th>인자</th><th>의미</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>시그널을 보내는 객체 (<code>ui-&gt;pushButton</code>)</td></tr>
+        <tr><td>2</td><td>시그널 (클래스의 멤버 함수 주소, <code>&amp;QPushButton::clicked</code>)</td></tr>
+        <tr><td>3</td><td>슬롯을 실행할 <strong>객체</strong> (<code>this</code>)</td></tr>
+        <tr><td>4</td><td>슬롯 (<strong>클래스의</strong> 멤버 함수 주소, <code>&amp;Widget::pushButtonClick</code>)</td></tr>
+      </tbody>
+    </table>
+    <p>
+      <code>this-&gt;pushButtonClick</code>은 멤버 함수 포인터가 아닙니다.
+      괄호를 붙이면 호출이 되고, 안 붙이면 C++에서 비정적 멤버 함수 주소로 쓸 수 없습니다.
+    </p>
+    <p>비정적 멤버 함수 주소는 반드시 아래 형식입니다.</p>
+<pre><code>&amp;Widget::pushButtonClick</code></pre>
+    <p>
+      <code>this-&gt;</code>로 호출하고 싶다면 람다로 감싸야 합니다.
+      이때 <code>this-&gt;pushButtonClick()</code>은 포인터가 아니라 <strong>호출</strong>입니다.
+    </p>
+<pre><code>connect(ui-&gt;pushButton, &amp;QPushButton::clicked, this, [this]() {
+    this-&gt;pushButtonClick();
+});</code></pre>
+
+    <h3>객체의 주소가 아니라 클래스의 주소</h3>
+    <p>
+      <code>&amp;Widget::pushButtonClick</code>은 특정 객체(<code>this</code>)의 함수 주소가 아니라
+      <strong>클래스의 멤버 함수 주소</strong>입니다.
+    </p>
+    <ul>
+      <li><code>this</code>: 슬롯을 실행할 객체</li>
+      <li><code>&amp;Widget::pushButtonClick</code>: 그 객체에서 호출할 멤버 함수 (클래스 기준)</li>
+    </ul>
+    <p>
+      비정적 멤버 함수 코드는 인스턴스마다 복사되지 않고, <code>Widget</code> 클래스에 하나만 있습니다.
+      그래서 주소도 객체에서 얻지 않고 클래스에서 얻습니다.
+    </p>
+
+    <h2 id="s2">2. 정적 멤버 함수와 비정적 멤버 함수</h2>
+    <p>멤버 함수는 <strong>정적(static)</strong>과 <strong>비정적(non-static)</strong> 두 종류입니다.</p>
+    <p><strong>비정적</strong>이 일반적인 멤버 함수입니다. 객체에 속하고, 호출할 때 <code>this</code>가 필요합니다.</p>
+<pre><code>void Widget::pushButtonClick()   // 비정적
+{
+    qDebug() &lt;&lt; Q_FUNC_INFO &lt;&lt; "Hello, World";
+}
+
+widget-&gt;pushButtonClick();       // 객체가 있어야 호출 가능</code></pre>
+    <p>
+      <strong>정적</strong>은 <code>static</code>을 붙인 함수입니다.
+      클래스에는 속하지만 특정 객체에는 속하지 않아서 <code>this</code>가 없습니다.
+    </p>
+<pre><code>class Widget : public QWidget {
+    static void hello();         // 정적
+};
+
+Widget::hello();                 // 객체 없이 클래스 이름으로 호출</code></pre>
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>비정적 멤버 함수</th>
+          <th>정적 멤버 함수</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>this</code></td><td>있음</td><td>없음</td></tr>
+        <tr><td>호출</td><td><code>객체.함수()</code></td><td><code>클래스::함수()</code></td></tr>
+        <tr><td>주소 문법</td><td><code>&amp;Widget::pushButtonClick</code></td><td><code>&amp;Widget::hello</code></td></tr>
+        <tr><td>포인터 타입</td><td>멤버 함수 포인터 <code>void (Widget::*)()</code></td><td>일반 함수 포인터 <code>void (*)()</code></td></tr>
+        <tr><td><code>connect</code></td><td>3번째에 객체 필요</td><td>객체 없이 함수만 넘겨도 됨</td></tr>
+      </tbody>
+    </table>
+    <p>
+      적어 두는 모양은 둘 다 <code>&amp;클래스이름::함수이름</code>으로 같습니다.
+      다만 <strong>같은 종류의 주소는 아닙니다.</strong>
+    </p>
+<pre><code>&amp;Widget::pushButtonClick   // 비정적 → 멤버 함수 포인터  void (Widget::*)()
+&amp;Widget::hello             // 정적   → 일반 함수 포인터  void (*)()</code></pre>
+    <p>
+      <code>connect(..., this, &amp;Widget::pushButtonClick)</code>에서 <code>this</code>가 필요한 이유입니다.
+      비정적 슬롯은 <strong>어느 Widget 인스턴스에서 실행할지</strong>를 따로 넘겨야 합니다.
+    </p>
+
+    <h2 id="s3">3. 함수 코드는 클래스에 하나, 데이터는 인스턴스마다</h2>
+    <p>“비정적 함수도 인스턴스마다 있어야 하는 것 아닌가?”라는 직관은 흔히 빗나갑니다.</p>
+    <p>인스턴스마다 생기는 것은 <strong>데이터(멤버 변수)</strong>입니다. 함수 코드는 복사되지 않습니다.</p>
+<pre class="ascii"><code>코드 영역 (프로그램에 1개)
+  Widget::pushButtonClick()   ← 함수 본체는 여기 하나뿐
+  Widget::Widget()
+  ...
+
+w1 객체
+  ui  (이 객체의 멤버 변수)
+
+w2 객체
+  ui  (다른 객체의 멤버 변수)</code></pre>
+    <p>
+      <code>pushButtonClick()</code> 기계어가 <code>w1</code>, <code>w2</code>마다 복제되면,
+      창을 1000개 만들 때 같은 함수가 1000번 복사됩니다.
+      그래서 C++는 함수는 클래스에 하나만 두고, 호출할 때 <strong>어느 객체인지</strong>만 <code>this</code>로 넘깁니다.
+    </p>
+<pre><code>w1.pushButtonClick();   // 내부적으로 this = &amp;w1 을 넘겨서 같은 함수 실행
+w2.pushButtonClick();   // this = &amp;w2 를 넘겨서 같은 함수 실행</code></pre>
+    <p>같은 함수 코드를 쓰지만, <code>this</code>가 다르니까 <code>ui</code> 같은 멤버 변수는 객체마다 다르게 보입니다.</p>
+    <p>정적 / 비정적의 차이는 <strong>함수가 몇 개냐</strong>가 아닙니다. 둘 다 클래스에 함수는 하나입니다.</p>
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>비정적 멤버 함수</th>
+          <th>정적 멤버 함수</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>함수 코드</td><td>클래스에 1개</td><td>클래스에 1개</td></tr>
+        <tr><td><code>this</code></td><td>있음 → 멤버 변수 접근 가능</td><td>없음 → 인스턴스 멤버 변수 접근 불가</td></tr>
+        <tr><td>호출</td><td>객체가 필요</td><td>객체 없이 호출 가능</td></tr>
+      </tbody>
+    </table>
+    <p>
+      객체마다 필요한 것은 <code>ui</code> 같은 <strong>상태</strong>이고,
+      <code>pushButtonClick</code> 같은 <strong>동작(코드)</strong>은 클래스에 하나만 있으면 됩니다.
+    </p>
+
+    <h2 id="s4">4. C++ / Java / C# 메모리 구조 비교</h2>
+    <p>이 구조는 C++만의 방식이 아닙니다. Java, C#도 <strong>함수 코드는 타입(클래스)에 하나, 데이터는 인스턴스마다</strong> 둡니다.</p>
+<pre class="ascii"><code>클래스/타입 쪽 (하나)
+  메서드 코드
+  가상 함수 테이블 (vtable / method table)
+  static 필드
+
+인스턴스 쪽 (객체마다)
+  인스턴스 필드
+  (필요하면) 클래스/메서드 테이블을 가리키는 포인터</code></pre>
+    <h3>C++</h3>
+    <ul>
+      <li>객체는 스택에도, <code>new</code>로 힙에도 둘 수 있습니다.</li>
+      <li>일반(비가상) 멤버 함수는 객체 안에 포인터조차 안 넣습니다. 호출이 컴파일 시점에 결정됩니다.</li>
+      <li>가상 함수가 있는 클래스만 객체 앞에 <code>vptr</code>(vtable 포인터)이 붙습니다.</li>
+      <li>가비지 컬렉터가 없고, 레이아웃을 비교적 직접 통제합니다.</li>
+    </ul>
+    <h3>Java</h3>
+    <ul>
+      <li>객체는 전부 힙에 있습니다.</li>
+      <li>모든 객체 헤더에 클래스 정보 포인터가 있습니다. 메서드 코드는 객체 안이 아니라 <strong>Metaspace(클래스 영역)</strong>에 있습니다.</li>
+      <li>인스턴스 필드는 객체마다, <code>static</code> 필드/메서드는 클래스에 하나입니다.</li>
+      <li>가상 호출은 클래스의 메서드 테이블을 타고 갑니다.</li>
+    </ul>
+    <h3>C#</h3>
+    <ul>
+      <li>Java와 거의 같습니다. 참조 타입 객체는 힙에 있고, 헤더에 MethodTable 포인터가 있습니다.</li>
+      <li>메서드 코드는 타입에 하나, 필드는 인스턴스마다입니다.</li>
+      <li><code>struct</code>는 스택/인라인에 값이 들어가지만, 메서드 코드는 그래도 타입에 하나뿐입니다.</li>
+    </ul>
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>메서드 코드</th>
+          <th>인스턴스 필드</th>
+          <th>객체가 추가로 갖는 것</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>C++</td><td>클래스에 1개</td><td>객체마다</td><td>가상 함수가 있을 때만 vptr</td></tr>
+        <tr><td>Java</td><td>클래스(Metaspace)에 1개</td><td>객체마다</td><td>항상 클래스 포인터(헤더)</td></tr>
+        <tr><td>C#</td><td>타입(MethodTable)에 1개</td><td>객체마다</td><td>항상 MethodTable 포인터(헤더)</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="s5">5. 가상 함수와 vtable</h2>
+    <p>
+      <strong>vtable</strong>은 “이 객체에서 이 함수를 호출하면, 실제로는 어느 구현을 실행할지”를
+      런타임에 고르기 위한 표입니다. C++와 Java 모두 이 아이디어를 쓰지만,
+      <strong>어떤 함수가 표에 들어가는지</strong>가 다릅니다.
+    </p>
+<pre class="ascii"><code>객체 ──(타입 포인터)──► 그 클래스의 함수 테이블
+                              [0] foo 구현 주소
+                              [1] bar 구현 주소</code></pre>
+    <p>호출은 대략 <code>객체.테이블[슬롯번호]()</code> 입니다.</p>
+    <h3>C++</h3>
+    <p><code>virtual</code>을 붙인 멤버 함수만 런타임 디스패치입니다. 안 붙이면 컴파일 시점에 선언 타입 기준으로 호출이 고정됩니다.</p>
+    <ul>
+      <li>가상 함수가 없는 클래스는 <strong>vptr/vtable이 없습니다.</strong></li>
+      <li>가상 함수가 있으면 객체 앞에 <strong>vptr</strong>이 붙고, 그 클래스의 vtable을 가리킵니다.</li>
+      <li>자식 객체를 만들면 vptr은 <strong>자식 클래스 vtable</strong>을 가리킵니다.</li>
+      <li>다중 상속이 있어서 vtable이 여러 개이거나, 포인터 조정이 생길 수 있습니다.</li>
+      <li>소멸자도 다형적으로 지우려면 <code>virtual ~Animal()</code>이 필요합니다.</li>
+    </ul>
+    <h3>Java</h3>
+    <p>인스턴스 메서드는 기본적으로 전부 가상입니다. <code>virtual</code> 키워드가 없고, 막으려면 <code>final</code>을 붙입니다.</p>
+    <ul>
+      <li>모든 객체 헤더에 <strong>클래스 포인터</strong>가 있습니다.</li>
+      <li>클래스 상속은 <strong>단일 상속</strong>입니다. 여러 타입을 섞을 때는 <code>interface</code>를 씁니다.</li>
+      <li>인터페이스 호출은 클래스 vtable과 조금 다른 경로(<code>itable</code> / <code>invokeinterface</code>)를 씁니다.</li>
+      <li><code>static</code> / <code>private</code> / <code>final</code>은 오버라이드 대상이 아니라서, 일반 가상 호출과 다릅니다.</li>
+    </ul>
+    <table>
+      <thead>
+        <tr><th></th><th>C++</th><th>Java</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>기본 멤버 함수</td><td>컴파일 시점 (비가상)</td><td>런타임 (가상)</td></tr>
+        <tr><td>가상으로 만드는 법</td><td><code>virtual</code>을 붙임</td><td>아무것도 안 붙임 (기본)</td></tr>
+        <tr><td>가상을 막는 법</td><td><code>virtual</code>을 안 붙임, 또는 <code>final</code></td><td><code>final</code></td></tr>
+        <tr><td>객체에 붙는 것</td><td>가상 함수가 있을 때만 vptr</td><td>항상 클래스 포인터</td></tr>
+        <tr><td>상속</td><td>다중 상속 가능</td><td>클래스는 단일, 인터페이스는 여러 개</td></tr>
+      </tbody>
+    </table>
+    <p>
+      Qt의 <code>QWidget</code>이 좋은 예입니다.
+      <code>show()</code>, 이벤트 처리처럼 자식이 바꿔야 하는 함수는 C++에서 <code>virtual</code>입니다.
+      그래서 <code>QWidget*</code>로 가리켜도 실제 창 클래스의 구현이 호출됩니다.
+    </p>
+    <p>
+      한 줄로 말하면, <strong>둘 다 “클래스마다 함수 주소 표 + 객체는 그 표를 가리킴”</strong>이고,
+      C++는 필요한 함수만 표에 넣고 Java는 인스턴스 메서드를 기본적으로 표에 넣습니다.
+    </p>
+
+    <h2 id="s6">6. Animal / Dog 예제로 보는 vtable</h2>
+    <p>
+      핵심은 <strong>함수 코드는 클래스에 하나</strong>이고, 객체는 <strong>자기 타입의 표(vtable)</strong>만 가리킨다는 점입니다.
+      <code>Animal*</code>로 <code>Dog</code>를 가리켜도, 표만 따라가면 <code>Dog::speak</code>를 찾습니다.
+    </p>
+<pre><code>class Animal {
+public:
+    virtual void speak();
+    virtual void move();
+    void id();              // 비가상 → vtable에 없음
+    virtual ~Animal();
+};
+
+class Dog : public Animal {
+public:
+    void speak() override;  // 슬롯을 덮어씀
+    void bark();            // 비가상 → vtable에 없음
+};</code></pre>
+
+    <h3>객체와 표의 관계</h3>
+    <p>vtable은 <strong>클래스마다 1개</strong>입니다. 객체마다 표를 복사하지 않고, 객체는 표 주소(<code>vptr</code>)만 가집니다.</p>
+    <div class="mermaid">
+flowchart LR
+  subgraph objects ["객체 - 인스턴스마다"]
+    a["Animal a1\nvptr"]
+    d["Dog d1\nvptr"]
+    d2["Dog d2\nvptr"]
+  end
+  subgraph tables ["클래스마다 1개"]
+    av["Animal vtable"]
+    dv["Dog vtable"]
+  end
+  a --> av
+  d --> dv
+  d2 --> dv
+    </div>
+    <p><code>d1</code>과 <code>d2</code>는 데이터가 달라도 <strong>같은 Dog vtable</strong>을 봅니다.</p>
+
+    <h3>Animal / Dog vtable 내용</h3>
+    <p>부모에서 정한 <strong>슬롯 번호는 자식도 그대로</strong> 씁니다. 덮어쓸 함수만 주소를 바꿉니다.</p>
+    <p><strong>Animal vtable</strong></p>
+    <table>
+      <thead><tr><th>슬롯</th><th>함수</th><th>실제 주소</th></tr></thead>
+      <tbody>
+        <tr><td>0</td><td>소멸자</td><td><code>Animal::~Animal</code></td></tr>
+        <tr><td>1</td><td><code>speak</code></td><td><code>Animal::speak</code></td></tr>
+        <tr><td>2</td><td><code>move</code></td><td><code>Animal::move</code></td></tr>
+      </tbody>
+    </table>
+    <p><strong>Dog vtable</strong></p>
+    <table>
+      <thead><tr><th>슬롯</th><th>함수</th><th>실제 주소</th><th>의미</th></tr></thead>
+      <tbody>
+        <tr><td>0</td><td>소멸자</td><td><code>Dog::~Dog</code></td><td>덮어씀</td></tr>
+        <tr><td>1</td><td><code>speak</code></td><td><code>Dog::speak</code></td><td>덮어씀</td></tr>
+        <tr><td>2</td><td><code>move</code></td><td><code>Animal::move</code></td><td>상속 그대로</td></tr>
+      </tbody>
+    </table>
+    <p><code>id()</code>와 <code>bark()</code>는 <code>virtual</code>이 아니라 <strong>어느 표에도 없습니다.</strong></p>
+<pre class="ascii"><code>Dog 객체 d1
+┌─────────────┐
+│ vptr        │──┐
+├─────────────┤  │
+│ Animal 필드 │  │
+├─────────────┤  │
+│ Dog 필드    │  │
+└─────────────┘  │
+                 ▼
+            Dog vtable          코드 영역
+            ┌──────────────┐    ┌─────────────────┐
+         0  │ Dog::~Dog    │───►│ Dog 소멸자 코드 │
+         1  │ Dog::speak   │───►│ Dog::speak 코드 │
+         2  │ Animal::move │───►│ Animal::move    │
+            └──────────────┘    └─────────────────┘</code></pre>
+
+    <h3>런타임에 함수를 찾는 과정</h3>
+<pre><code>Animal* p = new Dog();
+p-&gt;speak();</code></pre>
+    <p>컴파일러는 <code>p</code>의 선언 타입이 <code>Animal*</code>라서, “<code>speak</code>는 슬롯 1”만 압니다. 실제 객체는 <code>Dog</code>입니다.</p>
+    <div class="mermaid">
+sequenceDiagram
+  participant Code as p->speak()
+  participant Obj as Dog 객체
+  participant VT as Dog vtable
+  participant Fn as Dog::speak
+  Code->>Obj: 1. 객체에서 vptr 읽기
+  Obj->>VT: 2. vptr이 가리키는 표로 이동
+  Code->>VT: 3. 슬롯 1 읽기
+  VT->>Fn: 4. 그 주소 호출, this = p
+    </div>
+    <ol>
+      <li><code>p</code>가 가리키는 객체 맨 앞의 <code>vptr</code>을 읽습니다.</li>
+      <li>그 <code>vptr</code>은 <strong>Dog vtable</strong>입니다. (<code>Animal</code> 객체를 가리켰다면 Animal vtable)</li>
+      <li><code>speak</code>는 Animal이 정한 <strong>슬롯 1</strong>이므로 <code>vtable[1]</code>을 읽습니다.</li>
+      <li>거기 들어 있는 <code>Dog::speak</code>를 호출하고, <code>this</code>로 <code>p</code>를 넘깁니다.</li>
+    </ol>
+    <p>그래서 선언은 <code>Animal*</code>인데 실행은 <code>Dog::speak</code>가 됩니다. 이것이 동적 바인딩입니다.</p>
+    <p><code>p-&gt;move()</code>면 슬롯 2이고, Dog가 덮어쓰지 않았으니 <code>Animal::move</code>가 실행됩니다.</p>
+
+    <h3>왜 슬롯 번호가 같아야 하는가</h3>
+    <p>호출 코드는 자식 타입을 모릅니다. <code>Animal*</code>만 보고 슬롯을 고릅니다.</p>
+<pre><code>p-&gt;speak();   // 기계어 수준: call *(p-&gt;vptr + 1)</code></pre>
+    <p>그래서 자식 vtable의 앞부분은 <strong>부모와 같은 순서</strong>여야 합니다.</p>
+<pre class="ascii"><code>슬롯    Animal              Dog
+ 0      ~Animal             ~Dog          ← 같은 역할, 다른 주소
+ 1      Animal::speak       Dog::speak    ← 같은 역할, 다른 주소
+ 2      Animal::move        Animal::move  ← 같은 역할, 같은 주소</code></pre>
+    <p>순서가 어긋나면 <code>Animal*</code>로 <code>speak</code>를 호출했는데 엉뚱한 함수가 실행됩니다. 컴파일러가 이 레이아웃을 맞춰 줍니다.</p>
+
+    <h3>생성 중에 vptr이 바뀌는 것</h3>
+    <p><code>new Dog()</code> 때 vptr은 처음부터 Dog가 아닙니다.</p>
+<pre class="ascii"><code>1. Animal 생성자 실행 중  → vptr = Animal vtable
+2. Dog 생성자 실행        → vptr = Dog vtable
+3. 소멸은 반대
+   Dog 소멸자             → Dog vtable
+   Animal 소멸자          → Animal vtable</code></pre>
+    <p>
+      그래서 <strong>생성자/소멸자 안에서 가상 함수를 호출하면</strong>
+      아직(또는 이미) 자식 테이블이 아니라서, 자식 오버라이드가 호출되지 않습니다.
+    </p>
+
+    <h2 id="s7">7. 비가상 <code>bark()</code>는 vtable에 들어가지 않는다</h2>
+    <p>C++에서 이 선언은 <strong>비가상</strong>입니다.</p>
+<pre><code>class Dog : public Animal {
+public:
+    void speak() override;
+    void bark();            // virtual 없음 → vtable에 안 들어감
+};</code></pre>
+    <p><code>bark()</code>는 표에 없습니다. <code>dog.bark()</code>는 컴파일 시점에 <code>Dog::bark</code>로 고정됩니다.</p>
+    <p>vtable에 들어가려면 자식에서 새로 만들 때도 <code>virtual</code>이 필요합니다.</p>
+<pre><code>virtual void bark();</code></pre>
+    <p>
+      그때만 Dog vtable 뒤에 슬롯 3이 생깁니다.
+      그래도 <code>Animal*</code>로는 <code>bark()</code>를 호출할 수 없습니다. 부모 표에 그 슬롯이 없기 때문입니다.
+    </p>
+<pre><code>Animal* p = new Dog();
+p-&gt;speak();   // OK, 슬롯 1
+p-&gt;bark();    // 컴파일 오류, Animal에 bark가 없음</code></pre>
+    <div class="note">
+      <code>bark()</code>를 <code>Animal*</code>로 가상 호출하려면 애초에
+      <code>Animal</code>에 <code>virtual void bark()</code>를 선언해야 합니다.
+    </div>
+
+    <h2 id="s8">8. Java의 method table</h2>
+    <p>아이디어는 같습니다. 다만 Java는 인스턴스 메서드가 기본이 가상이라, 표에 들어가는 함수가 더 많습니다.</p>
+<pre class="ascii"><code>Dog 객체
+┌──────────────────┐
+│ 클래스 포인터     │──► Dog 클래스 메타데이터
+│ 인스턴스 필드     │       speak → Dog.speak
+└──────────────────┘       move  → Animal.move
+                           bark  → Dog.bark   (Java에서는 기본이 가상)</code></pre>
+    <table>
+      <thead>
+        <tr><th></th><th>C++ <code>p-&gt;speak()</code></th><th>Java <code>a.speak()</code></th></tr>
+      </thead>
+      <tbody>
+        <tr><td>객체에서 읽는 것</td><td><code>vptr</code></td><td>클래스 포인터</td></tr>
+        <tr><td>표</td><td>그 클래스 vtable</td><td>그 클래스 method table</td></tr>
+        <tr><td>찾는 방식</td><td>슬롯 번호</td><td>슬롯 / 메서드 인덱스</td></tr>
+        <tr><td><code>id()</code> / <code>bark()</code>처럼 비가상</td><td>표에 없음, 컴파일 때 고정</td><td><code>final</code>/<code>private</code>/<code>static</code>이 아니면 표에 있음</td></tr>
+      </tbody>
+    </table>
+    <p>Java도 <code>Animal a = new Dog(); a.speak();</code>이면 객체의 클래스 포인터가 <code>Dog</code>를 가리키므로 <code>Dog.speak</code>로 갑니다.</p>
+
+    <h2>한 줄 정리</h2>
+    <ul>
+      <li><strong>vtable</strong>: 클래스마다 있는 “가상 함수 주소 목록”</li>
+      <li><strong>vptr</strong>: 객체마다 있는 “내 클래스는 이 표”라는 포인터</li>
+      <li><strong>오버라이드</strong>: 같은 슬롯의 주소만 자식 구현으로 교체</li>
+      <li><strong>런타임 찾기</strong>: 객체 → 표 → 슬롯 번호 → 함수 코드</li>
+      <li><strong>비가상 함수</strong>: 표에 들어가지 않고, 선언 타입 기준으로 컴파일 때 결정</li>
+    </ul>
+    <p>
+      <code>Animal* p = new Dog(); p-&gt;speak();</code>는 “<code>speak</code>는 슬롯 1이다”만 컴파일 때 정하고,
+      <strong>어느 표의 슬롯 1인지</strong>는 실행 때 <code>p</code>의 실제 객체(Dog)를 보고 결정합니다.
+    </p>
+  </div>
+
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "neutral" });
+  </script>
+</body>
+</html>
