@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Qt 서브프로젝트 구성 절차서</title>
+  <style>
+    :root {
+      --bg: #f6f3ee;
+      --paper: #fffdf8;
+      --ink: #1c1915;
+      --muted: #5c564c;
+      --line: #e4ddd2;
+      --accent: #0f6e56;
+      --accent-soft: #e4f4ee;
+      --warn: #8a4b12;
+      --warn-bg: #f8eedf;
+      --code-bg: #1e1b16;
+      --code-fg: #f3efe6;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.65;
+    }
+    .wrap {
+      display: grid;
+      grid-template-columns: 240px minmax(0, 860px);
+      gap: 32px;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+    nav {
+      position: sticky;
+      top: 24px;
+      align-self: start;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px 14px;
+      max-height: calc(100vh - 48px);
+      overflow: auto;
+    }
+    nav h2 {
+      margin: 0 0 10px;
+      font-size: 12px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    nav a {
+      display: block;
+      color: var(--ink);
+      text-decoration: none;
+      font-size: 13px;
+      padding: 5px 8px;
+      border-radius: 6px;
+    }
+    nav a:hover { background: var(--accent-soft); }
+    main {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 40px 44px;
+    }
+    h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: -.02em; }
+    .lead { color: var(--muted); margin: 0 0 28px; }
+    h2 {
+      margin: 40px 0 12px;
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+      font-size: 20px;
+    }
+    h2:first-of-type { border-top: 0; }
+    h3 { margin: 24px 0 8px; font-size: 16px; }
+    p { margin: 0 0 12px; }
+    ul, ol { margin: 0 0 16px; padding-left: 22px; }
+    li { margin: 4px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 0 16px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #f3efe7; }
+    code, kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: .9em;
+    }
+    p code, li code, td code, h3 code {
+      background: #efe8dc;
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+    pre {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      padding: 14px 16px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.5;
+      margin: 0 0 16px;
+    }
+    pre code { background: none; padding: 0; color: inherit; }
+    .box {
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin: 0 0 16px;
+    }
+    .note { background: var(--accent-soft); border: 1px solid #c8e6d8; }
+    .warn { background: var(--warn-bg); border: 1px solid #ead2b0; }
+    .box strong { display: block; margin-bottom: 4px; }
+    .warn strong { color: var(--warn); }
+    .note strong { color: var(--accent); }
+    .flow {
+      background: #f3efe7;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin: 0 0 16px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+    }
+    .check li { list-style: none; }
+    .check { padding-left: 4px; }
+    .check li::before { content: "☐ "; }
+    @media (max-width: 860px) {
+      .wrap { grid-template-columns: 1fr; padding: 16px; }
+      nav { position: static; max-height: none; }
+      main { padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <h2>목차</h2>
+      <a href="#s1">1. 저장소가 돌아가는 방식</a>
+      <a href="#s2">2. 이름 규칙</a>
+      <a href="#s3">3. 작업 전 확인</a>
+      <a href="#s4">4. 전체 흐름</a>
+      <a href="#s5">5. 루트에 예제 만들기</a>
+      <a href="#s6">6. 섹션 디렉터리 만들기</a>
+      <a href="#s7">7. 폴더 통째로 이동</a>
+      <a href="#s8">8. 기존 섹션에 추가</a>
+      <a href="#s9">9. CMake 체크리스트</a>
+      <a href="#s10">10. Qt Creator 재구성</a>
+      <a href="#s11">11. 자주 나는 문제</a>
+      <a href="#s12">12. 작업 예시</a>
+      <a href="#s13">13. 복붙용</a>
+    </nav>
+    <main>
+      <h1>Qt 서브프로젝트 구성 절차서</h1>
+      <p class="lead">
+        이 저장소는 <strong>루트 하나 + 섹션별 서브프로젝트</strong> CMake 멀티 프로젝트입니다.
+        Qt Creator에서 새 예제를 만들면 보통 루트에 폴더가 생깁니다.
+        그 폴더를 <code>sectionXX</code> 아래로 옮기고 CMake에 등록하는 절차입니다.
+      </p>
+      <p>대상 환경: macOS · Qt Creator · 빌드 시스템 <strong>CMake</strong> (qmake / <code>.pro</code> 사용 안 함) · Qt 6.5 이상</p>
+
+      <h2 id="s1">1. 이 저장소가 돌아가는 방식</h2>
+      <p>빌드는 항상 <strong>저장소 루트의 <code>CMakeLists.txt</code></strong>가 시작점입니다. Qt Creator에서도 이 파일을 엽니다.</p>
+      <pre><code>저장소 루트
+├── CMakeLists.txt          ← 여기만 연다
+├── section02/
+│   ├── CMakeLists.txt      ← 섹션 안의 예제들을 등록
+│   ├── P01_Console_Application/
+│   ├── P02_GUI_Example/
+│   └── P03_GUI_app/
+└── section03/
+    ├── CMakeLists.txt
+    └── P01_SignalSlot/</code></pre>
+      <p>포함 관계는 한 줄입니다.</p>
+      <ol>
+        <li>루트 <code>CMakeLists.txt</code> → <code>add_subdirectory(sectionXX)</code></li>
+        <li><code>sectionXX/CMakeLists.txt</code> → <code>add_subdirectory(P0N_예제이름)</code></li>
+        <li><code>P0N_예제이름/CMakeLists.txt</code> → 실제 실행 파일 정의</li>
+      </ol>
+      <div class="box warn">
+        <strong>루트에 예제를 직접 넣지 않습니다</strong>
+        루트에는 섹션만 <code>add_subdirectory</code> 합니다. 예제 폴더를 루트 CMake에 등록하면 안 됩니다.
+      </div>
+
+      <h2 id="s2">2. 이름 규칙</h2>
+      <p>작업을 시작하기 전에 이름을 정합니다.</p>
+      <table>
+        <thead>
+          <tr><th>대상</th><th>규칙</th><th>예</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>섹션 디렉터리</td>
+            <td><code>section</code> + 두 자리 번호</td>
+            <td><code>section02</code>, <code>section03</code>, <code>section04</code></td>
+          </tr>
+          <tr>
+            <td>예제 디렉터리 / 타깃 이름</td>
+            <td><code>P</code> + 두 자리 번호 + <code>_</code> + 영문 이름</td>
+            <td><code>P01_SignalSlot</code>, <code>P02_GUI_Example</code></td>
+          </tr>
+          <tr>
+            <td>섹션 안 번호</td>
+            <td>그 섹션 안에서만 1부터</td>
+            <td>section03의 첫 예제는 <code>P01_...</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <p>CMake 타깃 이름은 저장소 전체에서 겹치지 않게 합니다. 지금은 섹션마다 예제 이름이 다르므로 문제 없습니다.</p>
+
+      <h2 id="s3">3. 작업 전에 확인할 것</h2>
+      <ol>
+        <li>Qt Creator에서 <strong>루트 <code>CMakeLists.txt</code></strong>가 열려 있는지 확인합니다.</li>
+        <li>새 예제가 들어갈 섹션 번호를 정합니다. (강의 Section 4면 <code>section04</code>)</li>
+        <li>그 섹션에 이미 예제가 몇 개 있는지 보고, 다음 번호를 정합니다.</li>
+        <li>빌드 시스템은 반드시 <strong>CMake</strong>입니다. New Project 마법사에서 qmake를 고르지 마세요.</li>
+      </ol>
+
+      <h2 id="s4">4. 전체 흐름 (한눈에)</h2>
+      <div class="flow">1. Qt Creator에서 새 프로젝트를 저장소 루트에 만든다
+2. 루트에 P0N_이름 폴더가 생긴다
+3. sectionXX 가 없으면 만든다
+4. P0N_이름 폴더를 sectionXX 안으로 통째로 옮긴다
+5. CMakeLists.txt 두 곳(루트, 섹션)을 고친다
+6. Qt Creator에서 CMake를 다시 돌린다
+7. 실행 타깃을 새 예제로 바꿔 빌드한다</div>
+      <p><code>sectionXX</code>가 이미 있으면 3번은 건너뜁니다.</p>
+
+      <h2 id="s5">5. 절차 A — Qt Creator에서 예제 프로젝트를 루트에 만들기</h2>
+      <p>예제는 <strong>먼저 루트에 만든 뒤</strong> 옮깁니다. Qt Creator 마법사가 위치를 루트로 잡기 쉽기 때문입니다.</p>
+
+      <h3>5.1 새 프로젝트 시작</h3>
+      <ol>
+        <li>Qt Creator 메뉴 <strong>File → New Project...</strong> (<kbd>⌘N</kbd>)</li>
+        <li>왼쪽에서 <strong>Application</strong>을 고릅니다.</li>
+        <li>강의 내용에 맞는 템플릿을 고릅니다.</li>
+      </ol>
+      <table>
+        <thead>
+          <tr><th>만들고 싶은 것</th><th>템플릿</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>콘솔만</td><td>Qt Console Application</td></tr>
+          <tr><td>위젯 창, <code>.ui</code> 없음</td><td>Qt Widget Application</td></tr>
+          <tr><td>위젯 창 + Designer 폼</td><td>Qt Widget Application, <strong>Generate form</strong> 체크</td></tr>
+        </tbody>
+      </table>
+      <ol start="4">
+        <li><strong>Choose...</strong></li>
+      </ol>
+
+      <h3>5.2 이름과 위치</h3>
+      <ol>
+        <li><strong>Name</strong>: <code>P01_SignalSlot</code>처럼 디렉터리/타깃 이름을 그대로 넣습니다. 공백 금지.</li>
+        <li><strong>Create in</strong>: 저장소 <strong>루트</strong> 경로를 지정합니다.<br>
+          예: <code>/Users/나/work/inflearn-eddykim777-qt6-1st-start</code></li>
+        <li>하위에 <code>P01_SignalSlot</code> 폴더가 새로 생기는지 미리보기에서 확인합니다.</li>
+        <li><strong>Next</strong></li>
+      </ol>
+      <div class="box note">
+        <strong>다른 방법</strong>
+        루트가 아니라 <code>section03</code> 안을 Create in으로 잡아도 됩니다. 그렇게 하면 이후 이동은 생략할 수 있습니다.
+        다만 실수로 다른 경로에 만들 때가 많아서, 이 문서의 기본은 <strong>루트에 만들고 옮기기</strong>입니다.
+      </div>
+
+      <h3>5.3 빌드 시스템</h3>
+      <ol>
+        <li><strong>Build system</strong>에서 <strong>CMake</strong>를 고릅니다.</li>
+        <li>qmake / Qbs는 고르지 않습니다.</li>
+        <li><strong>Next</strong></li>
+      </ol>
+
+      <h3>5.4 클래스 / 폼 (위젯 프로젝트인 경우)</h3>
+      <ol>
+        <li>Class name은 기본 <code>Widget</code>을 그대로 써도 됩니다.</li>
+        <li>폼이 필요하면 <code>.ui</code> 생성을 켭니다.</li>
+        <li><strong>Next</strong></li>
+      </ol>
+
+      <h3>5.5 Kit</h3>
+      <ol>
+        <li>Qt 6.5 이상 Kit을 선택합니다. (예: Qt 6.11.1 for macOS)</li>
+        <li><strong>Next → Finish</strong></li>
+      </ol>
+
+      <h3>5.6 생성된 폴더 확인</h3>
+      <p>저장소 루트에 아래가 생겨야 합니다.</p>
+      <pre><code>P01_SignalSlot/
+├── CMakeLists.txt
+├── main.cpp
+├── widget.h          (위젯 프로젝트)
+├── widget.cpp        (위젯 프로젝트)
+└── widget.ui         (폼을 켠 경우)</code></pre>
+      <p>이 시점에는 아직 루트에 있어도 됩니다. 바로 실행해 동작을 확인한 뒤 옮겨도 됩니다.</p>
+      <div class="box warn">
+        <strong>루트 CMake에 줄이 생겼다면</strong>
+        Qt Creator가 루트 <code>CMakeLists.txt</code>에 <code>add_subdirectory(P01_SignalSlot)</code>를 넣어 주는 경우가 있습니다.
+        <strong>나중에 반드시 지웁니다.</strong> 루트에는 섹션만 둡니다.
+      </div>
+
+      <h2 id="s6">6. 절차 B — 섹션 디렉터리가 없을 때 만들기</h2>
+      <p>새 강의 섹션의 첫 예제라면 <code>sectionXX</code>가 없습니다.</p>
+      <p>터미널에서 저장소 루트로 이동합니다.</p>
+      <pre><code>cd /경로/inflearn-eddykim777-qt6-1st-start</code></pre>
+      <p>섹션 폴더를 만듭니다. Section 4라면:</p>
+      <pre><code>mkdir section04</code></pre>
+
+      <h3>6.1 <code>section04/CMakeLists.txt</code></h3>
+      <p>섹션 CMake는 예제 폴더만 등록합니다. <code>project()</code>나 <code>find_package()</code>는 넣지 않습니다.</p>
+      <pre><code>add_subdirectory(P01_예제이름)</code></pre>
+      <p>예제를 더 만들면 같은 파일에 줄을 추가합니다.</p>
+      <pre><code>add_subdirectory(P01_예제이름)
+add_subdirectory(P02_다음예제)</code></pre>
+
+      <h3>6.2 <code>section04/README.md</code> (권장)</h3>
+      <p>섹션이 무엇을 다루는지, 예제 폴더가 어떤 템플릿인지 적어 둡니다.</p>
+      <pre><code># Section 4
+
+GUI 프로그래밍 - 위젯
+
+| 디렉터리 | Qt Creator 템플릿 |
+| --- | --- |
+| `P01_예제이름` | Qt Widget Application |</code></pre>
+
+      <h3>6.3 루트 <code>CMakeLists.txt</code>에 섹션 등록</h3>
+      <p>루트 파일은 대략 이렇게 되어 있습니다.</p>
+      <pre><code>cmake_minimum_required(VERSION 3.19)
+project(qt6-1st-start LANGUAGES CXX)
+
+add_subdirectory(section02)
+add_subdirectory(section03)</code></pre>
+      <p>맨 아래에 한 줄 추가합니다.</p>
+      <pre><code>add_subdirectory(section04)</code></pre>
+      <p>순서는 강의 섹션 번호 순으로 맞춥니다.</p>
+      <div class="box warn">
+        <strong>하지 말 것</strong>
+        루트에 <code>add_subdirectory(P01_예제이름)</code>를 넣는 것. 예제는 항상 섹션을 거쳐서 들어갑니다.
+      </div>
+
+      <h2 id="s7">7. 절차 C — 예제 폴더를 섹션 안으로 통째로 이동</h2>
+      <p>소스만 복사하지 않습니다. <code>CMakeLists.txt</code>와 <code>.ui</code>를 포함해 <strong>디렉터리 전체를 이동</strong>합니다.</p>
+      <p>저장소 루트에서:</p>
+      <pre><code>mv P01_예제이름 section04/</code></pre>
+      <p>Finder로 옮겨도 됩니다. 결과는 같아야 합니다.</p>
+      <pre><code>section04/
+├── CMakeLists.txt
+├── README.md
+└── P01_예제이름/
+    ├── CMakeLists.txt
+    ├── main.cpp
+    └── ...</code></pre>
+      <p>루트에 <code>P01_예제이름/</code>이 남아 있으면 안 됩니다.</p>
+      <p>이미 git에 추적 중인 폴더라면 <code>mv</code> 대신:</p>
+      <pre><code>git mv P01_예제이름 section04/</code></pre>
+      <p>아직 untracked이면 일반 <code>mv</code>로 충분합니다.</p>
+
+      <h3>7.1 예제 <code>CMakeLists.txt</code>는 수정하지 않아도 됩니다</h3>
+      <p>예제 안의 CMake는 상대 경로만 쓰므로, 폴더를 옮겨도 보통 그대로 동작합니다. 확인만 합니다.</p>
+      <ul>
+        <li><code>project(P01_예제이름 ...)</code></li>
+        <li><code>qt_add_executable(P01_예제이름 ...)</code></li>
+        <li><code>main.cpp</code>, <code>widget.cpp</code> 등 파일 이름이 실제 파일과 일치하는지</li>
+      </ul>
+      <p>콘솔 예제는 <code>Core</code>만, 위젯 예제는 <code>Core Widgets</code>가 <code>find_package</code> / <code>target_link_libraries</code>에 있어야 합니다.</p>
+
+      <h2 id="s8">8. 절차 D — 이미 있는 섹션에 예제만 추가할 때</h2>
+      <p><code>section03</code>처럼 폴더가 이미 있으면 섹션을 새로 만들지 않습니다.</p>
+      <ol>
+        <li>Qt Creator로 루트에 <code>P02_다음예제</code>를 만든다. (절차 A)</li>
+        <li>폴더를 옮긴다.
+          <pre><code>mv P02_다음예제 section03/</code></pre>
+        </li>
+        <li><code>section03/CMakeLists.txt</code>에 한 줄 추가한다.
+          <pre><code>add_subdirectory(P01_SignalSlot)
+add_subdirectory(P02_다음예제)</code></pre>
+        </li>
+        <li>루트 <code>CMakeLists.txt</code>는 건드리지 않는다. (<code>section03</code>은 이미 등록되어 있다.)</li>
+        <li>루트에 <code>add_subdirectory(P02_다음예제)</code>가 생겼다면 그 줄만 삭제한다.</li>
+        <li>섹션 <code>README.md</code> 표에 새 예제를 한 줄 넣는다.</li>
+      </ol>
+
+      <h2 id="s9">9. 절차 E — CMake 정리 체크리스트</h2>
+      <p>이동이 끝나면 아래를 순서대로 확인합니다.</p>
+
+      <h3>루트 <code>CMakeLists.txt</code></h3>
+      <ul class="check">
+        <li><code>add_subdirectory(section02)</code>처럼 <strong>섹션만</strong> 있다</li>
+        <li>새 섹션이면 <code>add_subdirectory(sectionXX)</code>가 있다</li>
+        <li><code>add_subdirectory(P01_...)</code> 같은 <strong>예제 직접 등록이 없다</strong></li>
+      </ul>
+
+      <h3><code>sectionXX/CMakeLists.txt</code></h3>
+      <ul class="check">
+        <li>파일이 있다</li>
+        <li><code>add_subdirectory(P0N_예제이름)</code>이 실제 폴더 이름과 같다</li>
+        <li><code>project()</code> / <code>find_package()</code>가 없다</li>
+      </ul>
+
+      <h3><code>sectionXX/P0N_예제이름/</code></h3>
+      <ul class="check">
+        <li>루트가 아니라 섹션 아래에 있다</li>
+        <li><code>CMakeLists.txt</code>, 소스, <code>.ui</code>(있다면)가 같이 있다</li>
+        <li>루트에 같은 이름 폴더가 남아 있지 않다</li>
+      </ul>
+
+      <h2 id="s10">10. 절차 F — Qt Creator에서 다시 Configure</h2>
+      <p>경로가 바뀌었으므로 이전 CMake 캐시는 낡은 경로를 가리킬 수 있습니다.</p>
+
+      <h3>10.1 CMake 다시 실행</h3>
+      <ol>
+        <li>왼쪽 <strong>Projects</strong> 모드 (또는 <kbd>⌘5</kbd>)</li>
+        <li>현재 Kit의 <strong>Build</strong> 설정</li>
+        <li><strong>Run CMake</strong> 버튼을 누른다</li>
+      </ol>
+      <p>또는 메뉴 <strong>Build → Run CMake</strong>.</p>
+      <p>오류 없이 끝나면 프로젝트 트리에 <code>sectionXX / P0N_예제이름</code>이 보여야 합니다.</p>
+
+      <h3>10.2 그래도 실패하면 빌드 디렉터리 초기화</h3>
+      <ol>
+        <li>Qt Creator에서 프로젝트를 닫는다.</li>
+        <li>저장소의 <code>build/</code> 폴더를 지운다. (<code>build/</code>는 gitignore 대상이다.)</li>
+        <li>루트 <code>CMakeLists.txt</code>를 다시 연다.</li>
+        <li>Kit을 고르고 Configure한다.</li>
+      </ol>
+
+      <h3>10.3 실행 타깃 바꾸기</h3>
+      <p>여러 실행 파일이 있으므로 기본 타깃이 이전 예제일 수 있습니다.</p>
+      <ol>
+        <li>왼쪽 아래(또는 상단) <strong>Run</strong> 구성에서 새 타깃 <code>P0N_예제이름</code>을 고른다</li>
+        <li>빌드 (<kbd>⌘B</kbd>) 후 실행 (<kbd>⌘R</kbd>)</li>
+      </ol>
+
+      <h2 id="s11">11. 자주 나는 문제</h2>
+      <h3>CMake: <code>add_subdirectory</code> given source ... which is not an existing directory</h3>
+      <p>예제 폴더를 옮겼는데 CMake에는 예전 경로가 남아 있습니다.</p>
+      <ul>
+        <li>루트 <code>CMakeLists.txt</code>의 <code>add_subdirectory(P01_...)</code>를 지웠는지 확인</li>
+        <li>섹션 CMake의 이름이 실제 폴더명과 같은지 확인 (<code>P01_SignalSlot</code> vs <code>P01_signal_slot</code>)</li>
+      </ul>
+
+      <h3>타깃이 두 개 생기거나 이름이 충돌한다</h3>
+      <p>같은 예제를 루트와 섹션에서 둘 다 <code>add_subdirectory</code>한 상태입니다. 루트 쪽 줄을 지웁니다.</p>
+
+      <h3>Qt Creator 트리는 새 위치인데 빌드는 옛 경로를 찾는다</h3>
+      <p>CMake를 다시 돌리거나 <code>build/</code>를 지우고 Configure합니다.</p>
+
+      <h3>위젯 창이 안 뜨고 콘솔만 된다 / 링크 에러</h3>
+      <p><code>find_package(Qt6 ... COMPONENTS Core Widgets)</code>와 <code>target_link_libraries(... Qt::Widgets)</code>가 있는지 봅니다. 콘솔 템플릿으로 시작했다면 Widgets가 없습니다.</p>
+
+      <h3><code>.ui</code>를 썼는데 빌드가 파일을 모른다</h3>
+      <p>예제 <code>CMakeLists.txt</code>의 <code>qt_add_executable(...)</code> 목록에 <code>widget.ui</code>가 있어야 합니다.</p>
+
+      <h3>qmake 프로젝트(<code>.pro</code>)가 생겼다</h3>
+      <p>마법사에서 CMake를 고르지 않은 것입니다. 그 폴더는 쓰지 말고, CMake로 다시 만듭니다.</p>
+
+      <h2 id="s12">12. 작업 예시 — <code>P01_SignalSlot</code>을 <code>section03</code>으로</h2>
+      <p>실제로 한 일과 같은 순서입니다.</p>
+      <ol>
+        <li>Qt Creator에서 루트에 <code>P01_SignalSlot</code> (Widget + form, CMake) 생성</li>
+        <li><code>mkdir section03</code></li>
+        <li><code>section03/CMakeLists.txt</code> 작성
+          <pre><code>add_subdirectory(P01_SignalSlot)</code></pre>
+        </li>
+        <li><code>mv P01_SignalSlot section03/</code></li>
+        <li>루트 <code>CMakeLists.txt</code>를 아래처럼 맞춤
+          <pre><code>cmake_minimum_required(VERSION 3.19)
+project(qt6-1st-start LANGUAGES CXX)
+
+add_subdirectory(section02)
+add_subdirectory(section03)</code></pre>
+        </li>
+        <li>Qt Creator에서 Run CMake</li>
+        <li>실행 타깃을 <code>P01_SignalSlot</code>로 바꾸고 빌드</li>
+      </ol>
+      <p>끝난 뒤 트리:</p>
+      <pre><code>section03/
+├── CMakeLists.txt
+├── README.md
+└── P01_SignalSlot/
+    ├── CMakeLists.txt
+    ├── main.cpp
+    ├── widget.cpp
+    ├── widget.h
+    └── widget.ui</code></pre>
+
+      <h2 id="s13">13. 다음 섹션을 추가할 때 복붙용</h2>
+      <p>Section 5 첫 예제 <code>P01_Layout</code>을 넣는다고 가정합니다.</p>
+      <pre><code># 1) Qt Creator로 루트에 P01_Layout 생성 (CMake)
+
+# 2) 섹션이 없으면
+mkdir section05
+
+# 3) 이동
+mv P01_Layout section05/</code></pre>
+      <p><code>section05/CMakeLists.txt</code>:</p>
+      <pre><code>add_subdirectory(P01_Layout)</code></pre>
+      <p>루트 <code>CMakeLists.txt</code> 맨 아래:</p>
+      <pre><code>add_subdirectory(section05)</code></pre>
+      <p>그다음 Qt Creator에서 <strong>Run CMake</strong> → 타깃 <code>P01_Layout</code> 선택.</p>
+    </main>
+  </div>
+</body>
+</html>
