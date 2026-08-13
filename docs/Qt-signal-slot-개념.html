@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Qt signal slot 개념</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --paper: #ffffff;
+      --ink: #1f2933;
+      --muted: #52606d;
+      --line: #d9e2ec;
+      --accent: #2457c5;
+      --accent-soft: #eef2ff;
+      --warn: #9a3412;
+      --warn-bg: #fff7ed;
+      --code-bg: #0f172a;
+      --code-fg: #e2e8f0;
+      --thead: #eef2ff;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.7;
+    }
+    .wrap {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 880px);
+      gap: 28px;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 36px 20px 80px;
+    }
+    nav {
+      position: sticky;
+      top: 20px;
+      align-self: start;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px 12px;
+      max-height: calc(100vh - 40px);
+      overflow: auto;
+    }
+    nav h2 {
+      margin: 0 0 10px;
+      padding: 0 8px;
+      font-size: 12px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    nav a {
+      display: block;
+      color: var(--ink);
+      text-decoration: none;
+      font-size: 13px;
+      padding: 5px 8px;
+      border-radius: 6px;
+      line-height: 1.4;
+    }
+    nav a:hover { background: var(--accent-soft); color: var(--accent); }
+    main {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 40px 44px;
+    }
+    h1 { margin: 0 0 8px; font-size: 1.85rem; line-height: 1.3; }
+    .lead { color: var(--muted); margin: 0 0 24px; }
+    h2 {
+      margin: 2.4rem 0 12px;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid var(--line);
+      font-size: 1.25rem;
+    }
+    h2:first-of-type { margin-top: 0; }
+    h3 { margin: 1.6rem 0 8px; font-size: 1.05rem; }
+    p { margin: 0 0 12px; }
+    ul, ol { margin: 0 0 16px; padding-left: 22px; }
+    li { margin: 4px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 0 16px;
+      font-size: 0.95rem;
+      background: var(--paper);
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--thead); }
+    code, kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .9em;
+    }
+    p code, li code, td code, th code, h3 code {
+      background: #e8eefc;
+      color: #1e3a8a;
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+    }
+    pre {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      padding: 14px 16px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 0.86rem;
+      line-height: 1.55;
+      margin: 0 0 16px;
+    }
+    pre code { background: none; padding: 0; color: inherit; }
+    .note {
+      background: var(--warn-bg);
+      border-left: 4px solid #f97316;
+      padding: 10px 14px;
+      margin: 0 0 16px;
+    }
+    .tip {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      padding: 10px 14px;
+      margin: 0 0 16px;
+    }
+    .ascii {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      border-radius: 10px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-size: 0.86rem;
+      line-height: 1.55;
+      margin: 0 0 16px;
+      white-space: pre;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    @media (max-width: 860px) {
+      .wrap { grid-template-columns: 1fr; padding: 16px; }
+      nav { position: static; max-height: none; }
+      main { padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <h2>목차</h2>
+      <a href="#s1">1. 이 문서에서 다루는 것</a>
+      <a href="#s2">2. 실습 예제 전체 소스</a>
+      <a href="#s3">3. 프로그램이 하는 일</a>
+      <a href="#s4">4. connect 네 인자와 this</a>
+      <a href="#s5">5. SIGNAL() / SLOT() 없이</a>
+      <a href="#s6">6. private 과 slots:</a>
+      <a href="#s7">7. 생성자 초기화 목록</a>
+      <a href="#s8">8. valueChanged 호출 시점</a>
+      <a href="#s9">9. 인자 규칙</a>
+      <a href="#s10">10. 인자 전달 메커니즘</a>
+      <a href="#s11">11. moc</a>
+      <a href="#s12">12. 컴파일러, .o, 실행 파일</a>
+      <a href="#s13">13. 콜백 비교, 적용 범위</a>
+      <a href="#s14">14. Qt 내부 구현</a>
+      <a href="#s15">15. 디자인 패턴</a>
+      <a href="#s16">16. 한눈에 보는 전체 흐름</a>
+    </nav>
+    <main>
+      <h1>Qt signal slot 개념</h1>
+      <p class="lead">
+        Qt 6 시그널/슬롯을 처음 접하는 사람이, 문법부터 내부 구현·디자인 패턴까지
+        한 흐름으로 이해하도록 정리한 문서입니다. 실습 코드는
+        <code>section03/P01_SignalSlot</code> 입니다.
+      </p>
+<pre><code>connect(ui-&gt;hSlider, &amp;QSlider::valueChanged, this, &amp;Widget::slot_valueChanged);
+connect(this, &amp;Widget::sig_textChanged, this, &amp;Widget::slot_textChanged);</code></pre>
+
+      <h2 id="s1">1. 이 문서에서 다루는 것</h2>
+      <p>
+        시그널/슬롯은 “어떤 일이 생기면, 미리 연결해 둔 함수를 호출한다”는 개념입니다.
+        버튼 클릭, 슬라이더 값 변경처럼 <strong>언제 일어날지 모르는 사건</strong>에 잘 맞습니다.
+      </p>
+      <table>
+        <thead><tr><th>단계</th><th>내용</th></tr></thead>
+        <tbody>
+          <tr><td>사용</td><td><code>connect</code>, <code>emit</code>, 생성자, UI 폼</td></tr>
+          <tr><td>규칙</td><td>인자 호환, <code>private</code> / <code>slots:</code>, <code>this</code></td></tr>
+          <tr><td>빌드</td><td>moc, <code>.o</code>, 실행 파일, “기계어” 용어</td></tr>
+          <tr><td>비교</td><td>일반 콜백, 스레드, 원격</td></tr>
+          <tr><td>내부</td><td><code>QMetaObject</code>, <code>Connection</code>, <code>activate</code></td></tr>
+          <tr><td>패턴</td><td>Observer, Command, Adapter, Strategy</td></tr>
+        </tbody>
+      </table>
+      <p>Qt 6.5 이상, 함수 포인터 <code>connect</code>(Qt 5에서 도입, Qt 6 권장 문법)를 기준으로 합니다.</p>
+
+      <h2 id="s2">2. 실습 예제 전체 소스</h2>
+      <h3>2.1 <code>widget.h</code></h3>
+      <p>
+        <code>Q_OBJECT</code>가 있어야 moc가 이 클래스를 처리합니다.
+        <code>Ui::Widget</code>은 지금 작성 중인 <code>Widget</code>이 아니라
+        <code>widget.ui</code>에서 생성되는 폼 클래스입니다.
+      </p>
+<pre><code>#ifndef WIDGET_H
+#define WIDGET_H
+
+#include &lt;QWidget&gt;
+
+QT_BEGIN_NAMESPACE
+namespace Ui {
+class Widget;
+}
+QT_END_NAMESPACE
+
+class Widget : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit Widget(QWidget *parent = nullptr);
+    ~Widget() override;
+
+private:
+    Ui::Widget *ui;
+
+signals:
+    void sig_textChanged(QString str);
+
+private slots:
+    void slot_valueChanged(int val);
+    void slot_textChanged(QString str);
+};
+#endif // WIDGET_H</code></pre>
+
+      <h3>2.2 <code>widget.cpp</code></h3>
+<pre><code>#include "widget.h"
+#include "ui_widget.h"
+
+Widget::Widget(QWidget *parent)
+    : QWidget(parent)
+    , ui(new Ui::Widget)
+{
+    ui-&gt;setupUi(this);
+
+    connect(ui-&gt;hSlider, &amp;QSlider::valueChanged, this, &amp;Widget::slot_valueChanged);
+    connect(this, &amp;Widget::sig_textChanged, this, &amp;Widget::slot_textChanged);
+}
+
+Widget::~Widget()
+{
+    delete ui;
+}
+
+void Widget::slot_valueChanged(int val)
+{
+    QString str = QString("%1").arg(val);
+    ui-&gt;leText-&gt;setText(str);
+
+    emit sig_textChanged(str);
+}
+
+void Widget::slot_textChanged(QString str)
+{
+    ui-&gt;leTextCopy-&gt;setText(str);
+}</code></pre>
+
+      <h3>2.3 <code>widget.ui</code> (핵심)</h3>
+      <p>
+        Designer 화면입니다. <code>&lt;connections/&gt;</code>가 비어 있으므로
+        시그널/슬롯은 C++ <code>connect</code>로만 연결합니다.
+      </p>
+<pre><code>&lt;widget class="QSlider" name="hSlider"&gt;
+  &lt;property name="orientation"&gt;
+    &lt;enum&gt;Qt::Orientation::Horizontal&lt;/enum&gt;
+  &lt;/property&gt;
+&lt;/widget&gt;
+&lt;widget class="QLineEdit" name="leText" ... /&gt;
+&lt;widget class="QLineEdit" name="leTextCopy" ... /&gt;</code></pre>
+
+      <h3>2.4 <code>main.cpp</code></h3>
+      <p><code>QApplication::exec()</code>가 이벤트 루프입니다. 마우스 이동, 페인트, Queued 시그널 전달이 이 루프를 탑니다.</p>
+<pre><code>#include "widget.h"
+#include &lt;QApplication&gt;
+
+int main(int argc, char *argv[])
+{
+    QApplication a(argc, argv);
+    Widget w;
+    w.show();
+    return QApplication::exec();
+}</code></pre>
+
+      <h3>2.5 <code>CMakeLists.txt</code></h3>
+      <p><code>qt_standard_project_setup()</code>과 <code>qt_add_executable()</code>이 moc와 uic를 자동으로 돌립니다.</p>
+<pre><code>cmake_minimum_required(VERSION 3.19)
+project(P01_SignalSlot LANGUAGES CXX)
+
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets)
+
+qt_standard_project_setup()
+
+qt_add_executable(P01_SignalSlot
+    WIN32 MACOSX_BUNDLE
+    main.cpp
+    widget.cpp
+    widget.h
+    widget.ui
+)
+
+target_link_libraries(P01_SignalSlot
+    PRIVATE
+        Qt::Core
+        Qt::Widgets
+)</code></pre>
+
+      <h2 id="s3">3. 프로그램이 하는 일</h2>
+      <div class="ascii">사용자가 가로 슬라이더를 움직임
+  → QSlider가 내부에서 emit valueChanged(새 값)
+  → Widget::slot_valueChanged(int val)
+      leText에 숫자 문자열 표시
+      emit sig_textChanged(str)
+  → Widget::slot_textChanged(QString str)
+      leTextCopy에 같은 문자열 표시</div>
+      <p>시그널이 두 단입니다.</p>
+      <ol>
+        <li>Qt가 제공하는 <code>QSlider::valueChanged(int)</code> — 직접 <code>emit</code>하지 않음</li>
+        <li>직접 선언한 <code>Widget::sig_textChanged(QString)</code> — 슬롯 안에서 <code>emit</code></li>
+      </ol>
+      <p class="note">
+        <code>emit</code>는 빈 매크로입니다. 컴파일러에게는 <code>sig_textChanged(str);</code>과 같습니다.
+        읽는 사람에게 “이 호출은 시그널이다”라고 알려 줄 뿐입니다.
+      </p>
+
+      <h2 id="s4">4. connect 네 인자와 this</h2>
+<pre><code>connect(ui-&gt;hSlider, &amp;QSlider::valueChanged, this, &amp;Widget::slot_valueChanged);</code></pre>
+      <table>
+        <thead><tr><th>인자</th><th>값</th><th>의미</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><code>ui-&gt;hSlider</code></td><td>시그널을 <strong>보내는</strong> 객체</td></tr>
+          <tr><td>2</td><td><code>&amp;QSlider::valueChanged</code></td><td>그 객체의 시그널 (클래스 멤버 함수 주소)</td></tr>
+          <tr><td>3</td><td><code>this</code></td><td>슬롯을 <strong>받을</strong> 객체</td></tr>
+          <tr><td>4</td><td><code>&amp;Widget::slot_valueChanged</code></td><td>그 객체의 멤버 함수</td></tr>
+        </tbody>
+      </table>
+      <p>
+        생성자 <code>Widget::Widget</code> 안의 <code>this</code>는
+        <strong>지금 만들고 있는 Widget 인스턴스</strong>입니다. 타입이 <code>Widget*</code>입니다.
+        <code>Widget</code>은 클래스 이름이고, <code>this</code>는 그 클래스의 현재 객체입니다.
+        창이 두 개면 <code>this</code>가 서로 다릅니다.
+      </p>
+      <div class="ascii">Widget A  →  A의 슬라이더 → A.slot_valueChanged()
+Widget B  →  B의 슬라이더 → B.slot_valueChanged()</div>
+      <p>
+        <code>&amp;Widget::slot_valueChanged</code>만으로는 “함수 종류”만 알고,
+        어느 인스턴스에서 실행할지는 <code>this</code>가 정합니다.
+        비정적 멤버 함수 주소는 반드시 <code>&amp;클래스::함수</code> 형식입니다.
+      </p>
+
+      <h2 id="s5">5. SIGNAL() / SLOT() 없이 연결하기</h2>
+      <p>예전 매크로 방식:</p>
+<pre><code>connect(ui-&gt;hSlider, SIGNAL(valueChanged(int)), this, SLOT(slot_valueChanged(int)));</code></pre>
+      <p>권장하는 함수 포인터 방식:</p>
+<pre><code>connect(ui-&gt;hSlider, &amp;QSlider::valueChanged, this, &amp;Widget::slot_valueChanged);</code></pre>
+      <table>
+        <thead><tr><th>매크로 방식</th><th>함수 포인터 방식</th></tr></thead>
+        <tbody>
+          <tr><td><code>SIGNAL(valueChanged(int))</code></td><td><code>&amp;QSlider::valueChanged</code></td></tr>
+          <tr><td><code>SLOT(slot_valueChanged(int))</code></td><td><code>&amp;Widget::slot_valueChanged</code></td></tr>
+        </tbody>
+      </table>
+      <p>인자 타입 <code>(int)</code>는 쓰지 않습니다. 함수의 주소만 넘깁니다.</p>
+      <ul>
+        <li>이름이나 타입이 틀리면 <strong>컴파일 에러</strong>입니다. 매크로는 문자열이라 실행 전까지 모를 수 있습니다.</li>
+        <li>오버로드가 하나뿐이면 위처럼 바로 씁니다. <code>QSlider::valueChanged</code>는 <code>int</code> 하나라 문제 없습니다.</li>
+      </ul>
+<pre><code>#define SIGNAL(a)  "2"#a     // "2valueChanged(int)"
+#define SLOT(a)    "1"#a     // "1slot_valueChanged(int)"</code></pre>
+
+      <h2 id="s6">6. private 과 slots: 의 의미</h2>
+<pre><code>private slots:
+    void slot_valueChanged(int val);</code></pre>
+      <table>
+        <thead><tr><th>키워드</th><th>하는 일</th></tr></thead>
+        <tbody>
+          <tr><td><code>private</code></td><td>C++ 접근 제한. 밖에서는 호출/주소 획득 불가</td></tr>
+          <tr><td><code>slots:</code></td><td>moc가 메타오브젝트에 등록. 예전 <code>SLOT()</code> 문자열 조회용</td></tr>
+        </tbody>
+      </table>
+      <p><code>private</code>이 의미 없는 것이 아닙니다. C++ 접근 제한은 그대로입니다.</p>
+      <p>생성자 안에서는 <code>this</code>의 private 멤버에 접근할 수 있으므로 연결됩니다. 클래스 밖에서 <code>&amp;Widget::slot_valueChanged</code>를 쓰면 컴파일 에러입니다.</p>
+      <p>함수 포인터 <code>connect</code>는 C++ 함수 주소를 쓰므로 <code>slots:</code> 없이 일반 멤버 함수여도 됩니다.</p>
+<pre><code>private:
+    void slot_valueChanged(int val);  // slots: 없음</code></pre>
+      <p>
+        예전 매크로는 문자열로 슬롯을 찾아 moc를 타기 때문에, 밖에서도 private 슬롯에 연결할 수 있었습니다.
+        <code>private slots:</code>의 원래 의도는 “C++에서는 직접 호출하지 못하게 하고, Qt <code>connect</code>로는 연결할 수 있게 한다”는 것이었습니다.
+        새 문법에서는 그 우회가 없습니다. 밖에서 연결되게 하려면 함수를 <code>public</code>으로 두면 됩니다.
+      </p>
+
+      <h2 id="s7">7. 생성자 초기화 목록</h2>
+<pre><code>Widget::Widget(QWidget *parent)
+    : QWidget(parent)
+    , ui(new Ui::Widget)
+{
+    ui-&gt;setupUi(this);
+    connect(...);
+}</code></pre>
+      <p>콜론(<code>:</code>) 뒤는 멤버 초기화 목록입니다. 생성자 본문보다 <strong>먼저</strong> 실행됩니다.</p>
+      <h3><code>: QWidget(parent)</code></h3>
+      <p>
+        <code>Widget</code>은 <code>QWidget</code>을 상속합니다. 기반 클래스 생성자는 초기화 목록에서만 호출할 수 있습니다.
+        <code>parent</code>는 Qt 위젯 부모입니다. <code>main</code>에서 <code>Widget w;</code>처럼 최상위 창이면 <code>nullptr</code>입니다.
+      </p>
+      <h3><code>, ui(new Ui::Widget)</code></h3>
+      <p>
+        <code>widget.ui</code>를 uic가 바꾼 폼 객체를 <code>new</code>로 만듭니다.
+        <code>ui-&gt;hSlider</code>처럼 쓰게 하고, 소멸자 <code>delete ui;</code>와 짝입니다.
+      </p>
+      <div class="ascii">1. QWidget(parent)     Qt 위젯으로서의 기본 준비
+2. ui(new Ui::Widget)  UI 폼 객체 생성
+3. setupUi(this)       실제 컨트롤을 이 창에 배치
+4. connect(...)        시그널/슬롯 예약 (아직 호출하지 않음)</div>
+
+      <h2 id="s8">8. 소스에 없는 valueChanged는 언제 호출되나</h2>
+      <p>
+        <code>&amp;QSlider::valueChanged</code>는 프로젝트 소스에 없습니다.
+        Qt 라이브러리 <code>QSlider</code>가 미리 만들어 둔 시그널입니다.
+        <code>connect</code>는 지금 호출하지 않고, “값이 바뀌면 슬롯을 실행해라”는 <strong>예약</strong>만 합니다.
+      </p>
+      <p>마우스 드래그, 키보드, <code>setValue()</code>로 값이 바뀌면 Qt 내부에서 <code>emit valueChanged(새 값)</code>이 나갑니다.</p>
+      <table>
+        <thead><tr><th>시그널</th><th>누가 emit 하나</th></tr></thead>
+        <tbody>
+          <tr><td><code>QSlider::valueChanged</code></td><td>Qt (<code>QSlider</code> 구현)</td></tr>
+          <tr><td><code>Widget::sig_textChanged</code></td><td>우리 코드 (<code>slot_valueChanged</code> 안)</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="s9">9. 시그널과 슬롯의 인자 규칙</h2>
+      <p>이 예제는 인자 개수와 타입이 같습니다. 필수는 “완전히 동일”이 아니라 <strong>호환</strong>입니다.</p>
+      <table>
+        <thead><tr><th>시그널</th><th>슬롯</th></tr></thead>
+        <tbody>
+          <tr><td><code>QSlider::valueChanged(int)</code></td><td><code>slot_valueChanged(int)</code></td></tr>
+          <tr><td><code>sig_textChanged(QString)</code></td><td><code>slot_textChanged(QString)</code></td></tr>
+        </tbody>
+      </table>
+      <ol>
+        <li>슬롯 인자가 <strong>더 적어도</strong> 됩니다. 뒤쪽 값은 버려집니다.</li>
+        <li>슬롯 인자가 <strong>더 많으면</strong> 안 됩니다.</li>
+        <li>앞쪽부터 차례로 맞춥니다. 순서를 바꿔 주지 않습니다.</li>
+        <li>타입이 변환 가능하면 됩니다. <code>int</code> → <code>double</code>은 되고, <code>QString</code> → <code>int</code>는 컴파일 에러입니다.</li>
+      </ol>
+<pre><code>void foo();              // valueChanged(int)와 연결 가능
+void bar(int a, int b);  // valueChanged(int)와 연결 불가</code></pre>
+      <p>시그널은 사실상 <code>void</code>입니다. 슬롯의 <code>return</code>을 보낸 쪽이 쓰기 어렵습니다. 값을 돌려받아야 하면 일반 함수가 낫습니다.</p>
+
+      <h2 id="s10">10. 인자가 전달되는 메커니즘</h2>
+      <p>
+        기본은 <code>Qt::AutoConnection</code>입니다. 슬라이더와 <code>Widget</code>이 같은 GUI 스레드이므로
+        <strong>Direct</strong>입니다. 이벤트 큐를 거치지 않고 일반 함수 호출처럼 넘어갑니다.
+      </p>
+      <h3>Direct (이 예제)</h3>
+      <p>moc가 만든 시그널 함수는 인자 값이 아니라 <strong>주소</strong>를 <code>void*</code> 배열에 넣습니다.</p>
+<pre><code>void QSlider::valueChanged(int _t1)
+{
+    void *_a[] = {
+        nullptr,  // [0] 반환값
+        const_cast&lt;void*&gt;(reinterpret_cast&lt;const void*&gt;(&amp;_t1))
+    };
+    QMetaObject::activate(this, &amp;staticMetaObject, /*시그널 번호*/, _a);
+}</code></pre>
+<pre><code>(receiver-&gt;*slot)(*reinterpret_cast&lt;int*&gt;(argv[1]));
+// 즉 this-&gt;slot_valueChanged(42);</code></pre>
+      <p><code>valueChanged</code>가 리턴하기 전에 슬롯이 끝납니다. 스택의 <code>int</code> 주소를 써도 안전합니다.</p>
+      <div class="ascii">슬라이더 드래그
+  → valueChanged(42)          스택에 42
+  → argv[1] = &amp;42
+  → slot_valueChanged(42)     같은 스택에서 즉시
+      emit sig_textChanged(str)
+        → slot_textChanged(str)
+  → valueChanged 리턴</div>
+      <h3>Queued (다른 스레드)</h3>
+      <p>
+        다른 스레드면 스택 주소를 쓸 수 없습니다. Qt는 인자를 <code>QMetaType</code>으로 복사해
+        <code>QMetaCallEvent</code>에 넣고, 수신 스레드 이벤트 루프에 게시합니다.
+      </p>
+      <table>
+        <thead><tr><th></th><th>Direct</th><th>Queued</th></tr></thead>
+        <tbody>
+          <tr><td>시점</td><td><code>emit</code> 도중에 슬롯 실행</td><td>이벤트 루프가 나중에 실행</td></tr>
+          <tr><td>인자</td><td>주소로 즉시 전달</td><td>복사본</td></tr>
+          <tr><td>조건</td><td>같은 스레드</td><td>수신 쪽에 이벤트 루프</td></tr>
+          <tr><td>이 예제</td><td>사용 중</td><td>사용하지 않음</td></tr>
+        </tbody>
+      </table>
+      <p class="note"><code>Qt::BlockingQueuedConnection</code>은 상대 슬롯이 끝날 때까지 기다립니다. UI 스레드와 섞으면 데드락이 나기 쉽습니다.</p>
+
+      <h2 id="s11">11. moc</h2>
+      <p>
+        <strong>moc</strong>는 Meta-Object Compiler입니다. Qt가 빌드 전에 돌리는 <strong>코드 생성기</strong>입니다.
+        <code>.o</code>를 만들지 않고, 컴파일러가 이해할 C++를 만듭니다.
+      </p>
+      <p>헤더에 <code>Q_OBJECT</code>가 있으면 moc가 클래스 이름, 시그널/슬롯 목록, 시그널 함수 본문, <code>qt_static_metacall</code>을 담은 <code>moc_widget.cpp</code>를 만듭니다.</p>
+<pre><code>#define signals public
+#define slots           /* 빈 매크로 */
+#define emit            /* 빈 매크로 */</code></pre>
+      <p>컴파일러에게 시그널은 public 멤버 함수입니다. moc만 <code>signals:</code> 블록을 보고 시그널로 등록합니다.</p>
+      <div class="ascii">widget.h   -- moc --&gt; moc_widget.cpp
+widget.ui  -- uic --&gt; ui_widget.h     (UI Compiler, moc와 다름)</div>
+
+      <h2 id="s12">12. 컴파일러와 moc, 목적 파일과 실행 파일</h2>
+      <h3>12.1 moc의 입력은 보통 <code>.h</code></h3>
+      <div class="ascii">일반 컴파일러:  widget.h + widget.cpp  →  widget.o
+moc:            widget.h (Q_OBJECT)    →  moc_widget.cpp
+
+widget.h ── moc ──→ moc_widget.cpp ── 컴파일러 ──→ moc_widget.o ─┐
+     │                                                          ├─ 링크 → 실행 파일
+widget.cpp ────────────────────── 컴파일러 ──→ widget.o ────────┘</div>
+      <p>moc는 보통 <code>widget.cpp</code>를 읽지 않습니다. 시그널/슬롯이 헤더 선언에 있기 때문입니다.</p>
+
+      <h3>12.2 “기계어”가 들어간 말</h3>
+      <p>기계어는 CPU가 읽는 명령 형식입니다. <code>.o</code>와 실행 파일은 그 명령을 담는 상자가 다릅니다. <strong>기계어 = 실행 파일</strong>이 아닙니다.</p>
+      <table>
+        <thead><tr><th>말</th><th>실제 의미</th></tr></thead>
+        <tbody>
+          <tr><td>기계어</td><td>CPU가 이해하는 명령 비트열</td></tr>
+          <tr><td>어셈블리어</td><td>그 기계어의 텍스트 표기 (<code>mov rax, 1</code>)</td></tr>
+          <tr><td>바이너리</td><td>텍스트가 아닌 바이트 데이터. <code>.o</code>·실행 파일·이미지가 해당될 수 있음</td></tr>
+          <tr><td>네이티브 코드</td><td>그 컴퓨터 CPU용 기계어. Qt/C++ 결과물</td></tr>
+          <tr><td>바이트코드</td><td>JVM 등 가상머신용. CPU 기계어 아님</td></tr>
+          <tr><td>목적 파일 (<code>.o</code>)</td><td>한 <code>.cpp</code>의 미완성 조각. 기계어 + 심볼 + 재배치</td></tr>
+          <tr><td>실행 파일</td><td><code>.o</code>들과 라이브러리를 이은 완성본</td></tr>
+        </tbody>
+      </table>
+      <div class="ascii">소스 코드     widget.cpp          사람이 쓴 텍스트
+     ↓ 컴파일
+목적 파일     widget.o            기계어 + 아직 구멍 있는 심볼
+     ↓ 링크
+실행 파일     app/MacOS/...       합쳐진 기계어 + 라이브러리 정보
+     ↓ 실행
+CPU                               그 기계어 명령을 수행</div>
+      <p><code>.o</code>에도 실행 파일에도 기계어가 있습니다. 차이점은 <strong>완성도</strong>입니다.</p>
+
+      <h3>12.3 <code>.o</code>와 실행 파일</h3>
+      <p><code>widget.o</code>는 함수를 CPU 명령으로 바꾸지만, <code>QString::arg</code> 같은 Qt 함수 주소는 아직 모릅니다.</p>
+      <div class="ascii">widget.o (macOS: Mach-O relocatable object)
+├─ 헤더 / __TEXT(기계어) / __DATA
+├─ 심볼 테이블    제공: Widget::slot_valueChanged / 필요: QString::arg
+└─ 재배치 정보    “이 위치의 주소는 나중에 고쳐 써라”</div>
+      <p>Linux는 ELF <code>.o</code>, Windows는 COFF <code>.obj</code>입니다. 혼자 실행이 안 되는 이유: <code>main</code>이 없을 수 있고, 외부 주소가 비어 있습니다.</p>
+      <p>링커가 <code>widget.o</code> + <code>moc_widget.o</code> + <code>main.o</code> + Qt 라이브러리를 이어 실행 파일을 만듭니다.</p>
+      <div class="ascii">P01_SignalSlot.app/
+└─ Contents/
+   ├─ MacOS/P01_SignalSlot     ← 실제 실행 파일 (Mach-O)
+   ├─ Frameworks/              ← Qt 등 .dylib
+   └─ Info.plist</div>
+      <p>실행 파일의 <code>__TEXT</code>가 CPU가 읽는 기계어입니다. <code>.o</code>의 <code>__TEXT</code>도 기계어지만 주소가 아직 임시입니다.</p>
+
+      <h2 id="s13">13. 콜백과 비교, 적용 범위</h2>
+      <p>
+        시그널/슬롯은 콜백의 특수 형태입니다.
+        “함수 주소를 저장해 두고 나중에 호출한다”는 점은 같고,
+        Qt는 연결 목록·수명·스레드·타입 정보를 붙입니다.
+      </p>
+      <table>
+        <thead><tr><th></th><th>일반 콜백</th><th>Qt 시그널/슬롯</th></tr></thead>
+        <tbody>
+          <tr><td>결합</td><td>호출자가 대상을 앎</td><td>보낸 쪽은 받는 쪽을 몰라도 됨</td></tr>
+          <tr><td>개수</td><td>1개이거나 리스트를 직접 관리</td><td><code>connect</code>로 N:M</td></tr>
+          <tr><td>끊기</td><td>직접 제거, 수명 실수 잦음</td><td><code>QObject</code> 파괴 시 연결도 정리</td></tr>
+          <tr><td>스레드</td><td>직접 동기화/큐잉</td><td>Queued가 값을 복사해 전달</td></tr>
+          <tr><td>필요 조건</td><td>함수만 있으면 됨</td><td>시그널을 내려면 <code>QObject</code> + moc</td></tr>
+        </tbody>
+      </table>
+      <p><strong>장점:</strong> 느슨한 결합, 한 시그널에 여러 슬롯, 객체 파괴 시 연결 정리, 스레드 간 복사 전달, UI 비동기 사건에 적합.</p>
+      <p><strong>단점:</strong> 직접 호출보다 느림, 디버그 스택이 간접적, moc/이벤트 루프 의존, 반환값이 약함, Direct 재진입, 원격은 기본 기능 아님.</p>
+      <p>콜백이 나은 경우: 짧은 수명, 동기 결과, 핫패스, <code>QObject</code>가 필요 없는 순수 C++.</p>
+
+      <h3>스레드</h3>
+      <p>같은 프로세스의 다른 스레드까지 Qt가 지원합니다. Auto면 같은 스레드는 Direct, 다른 스레드는 Queued입니다.</p>
+      <ul>
+        <li>받는 쪽이 <code>QObject</code>이고 그 스레드에 이벤트 루프가 있어야 합니다.</li>
+        <li>Queued면 인자 복사가 가능해야 합니다. <code>int</code>, <code>QString</code>은 됩니다.</li>
+        <li>다른 스레드 객체를 가리키는 포인터를 인자로 넘기는 것은 위험합니다.</li>
+      </ul>
+      <p>한계는 프로세스 안, 이벤트 루프가 있는 <code>QObject</code> 사이입니다.</p>
+
+      <h3>원격</h3>
+      <p><code>connect</code> 한 줄이 소켓 너머로 전달되지는 않습니다.</p>
+      <table>
+        <thead><tr><th>범위</th><th>Qt가 해 주는가</th></tr></thead>
+        <tbody>
+          <tr><td>같은 스레드 / 다른 객체</td><td>됨</td></tr>
+          <tr><td>다른 스레드, 같은 프로세스</td><td>됨 (Queued)</td></tr>
+          <tr><td>다른 프로세스 / 네트워크</td><td>기본 <code>connect</code>로는 안 됨. D-Bus, QtRO, 소켓 등</td></tr>
+        </tbody>
+      </table>
+      <p>원격에는 지연, 유실, 상대 종료처럼 로컬에 없던 문제가 생깁니다. 직렬화 + 전송 + 반대편에서 다시 <code>emit</code>이 필요합니다.</p>
+      <div class="ascii">1. 함수 포인터/람다      같은 스레드, 직접 호출
+2. Qt Direct            같은 스레드, 연결 목록 + 수명
+3. Qt Queued            스레드 경계, 값 복사 + 이벤트 루프
+4. 프로세스 버스         D-Bus, QtRO, IPC
+5. 네트워크 Pub-Sub      MQTT, gRPC stream 등</div>
+      <p>1–3은 Qt <code>connect</code>가 담당합니다. 잘 맞는 곳: UI 입력, 비동기 I/O, 상태 변경 알림. 안 맞는 곳: 핫패스, 반환값이 필요한 API, 인터럽트, 원격 RPC.</p>
+
+      <h2 id="s14">14. Qt가 시그널/슬롯을 구현한 방식</h2>
+      <p>시그널/슬롯은 언어 기능이 아닙니다. 연결 목록 + moc 생성 코드 + <code>QMetaObject::activate</code>로 구현된 옵저버입니다.</p>
+      <div class="ascii">[선언]  Q_OBJECT, signals, slots     ← 매크로 + moc가 읽는 표시
+[생성]  moc_widget.cpp               ← 메타 테이블, 시그널 함수
+[연결]  QObject::connect             ← Connection 노드를 두 리스트에 삽입
+[방출]  emit → 시그널 함수 → activate
+[전달]  Direct / Queued
+[정리]  QObject 소멸                 ← 양쪽 리스트에서 Connection 제거</div>
+      <table>
+        <thead><tr><th>구성</th><th>역할</th></tr></thead>
+        <tbody>
+          <tr><td><code>QMetaObject</code></td><td>클래스별 시그널/슬롯 목록</td></tr>
+          <tr><td><code>QObjectPrivate::Connection</code></td><td>“이 시그널 → 저 슬롯” 한 줄</td></tr>
+          <tr><td><code>QSlotObjectBase</code></td><td>새 문법용 호출 래퍼</td></tr>
+        </tbody>
+      </table>
+
+      <h3>14.1 moc가 만드는 것</h3>
+      <p>클래스당 <code>staticMetaObject</code>가 하나 있습니다. 인스턴스가 아니라 타입이 목록을 가집니다.</p>
+      <div class="ascii">Widget::staticMetaObject
+  superdata     → QWidget → … → QObject
+  stringdata    → "sig_textChanged", "slot_valueChanged", ...
+  static_metacall → Widget::qt_static_metacall</div>
+<pre><code>void Widget::sig_textChanged(QString _t1)
+{
+    void *_a[] = { nullptr, const_cast&lt;void*&gt;(reinterpret_cast&lt;const void*&gt;(&amp;_t1)) };
+    QMetaObject::activate(this, &amp;staticMetaObject, 0, _a);
+}</code></pre>
+      <p>새 문법은 멤버 함수 포인터를 <code>IndexOfMethod</code>로 넘겨 시그널 번호를 얻습니다. 문자열이 아닙니다.</p>
+
+      <h3>14.2 Connection과 두 리스트</h3>
+      <div class="ascii">Connection
+├─ sender / receiver / signal_index / connectionType
+├─ slotObj (새 문법) 또는 qt_static_metacall 인덱스 (옛 문법)
+├─ nextConnectionList   같은 시그널의 다음 슬롯
+└─ next / prev          수신자가 받는 연결들 (소멸 시 정리)
+
+보내는 쪽 (hSlider)  signalVector[valueChanged] → Connection → ...
+받는 쪽 (Widget)     senders ↔ Connection ↔ Connection</div>
+      <p>양방향이라 어느 쪽이 먼저 파괴돼도 죽은 슬롯을 호출하지 않습니다.</p>
+
+      <h3>14.3 connect와 activate</h3>
+      <p>템플릿 <code>connect</code>가 컴파일 타임에 <code>Q_OBJECT</code>, 인자 개수·타입을 검사하고 <code>QSlotObject</code>를 만듭니다.</p>
+<pre><code>slotObj-&gt;call(receiver, argv);
+// (static_cast&lt;Widget*&gt;(receiver)-&gt;*pmf)(*reinterpret_cast&lt;int*&gt;(argv[1]));</code></pre>
+      <p>연결이 없으면 비트마스크만 보고 return 합니다. 연결 없는 <code>emit</code>은 거의 공짜입니다.</p>
+      <p>이 앱은 GUI 스레드 하나라 전부 Direct입니다. <code>activate</code>가 재귀로 한 번 더 들어갑니다.</p>
+      <div class="ascii">ui-&gt;hSlider
+  signalVector[valueChanged]
+      Connection { receiver = Widget, slotObj = &amp;Widget::slot_valueChanged }
+
+Widget
+  signalVector[sig_textChanged]
+      Connection { receiver = this, slotObj = &amp;Widget::slot_textChanged }
+  senders ↔ 위의 두 Connection</div>
+      <p class="tip">
+        Qt 소스 본체:
+        <code>qtbase/src/corelib/kernel/qobject.cpp</code>,
+        <code>qobject_p.h</code>,
+        빌드 디렉터리의 <code>moc_widget.cpp</code>
+      </p>
+
+      <h2 id="s15">15. 사용된 디자인 패턴</h2>
+      <p>본체는 <strong>Observer</strong>입니다. 클래스가 그 이름을 쓰지는 않습니다.</p>
+      <table>
+        <thead><tr><th>GoF Observer</th><th>Qt</th></tr></thead>
+        <tbody>
+          <tr><td>Subject</td><td>시그널을 가진 <code>QObject</code> (<code>hSlider</code>)</td></tr>
+          <tr><td><code>notify()</code></td><td><code>emit</code> → <code>activate()</code></td></tr>
+          <tr><td>Observer</td><td>슬롯 / 람다</td></tr>
+          <tr><td><code>attach</code> / <code>detach</code></td><td><code>connect</code> / <code>disconnect</code></td></tr>
+        </tbody>
+      </table>
+      <p>
+        <code>update()</code> 전용 인터페이스가 없고, 시그널이 객체마다 여러 개이며,
+        인자에 타입이 있습니다. 구현은 Observer, 사용감은 Pub-Sub에 가깝습니다.
+      </p>
+      <ul>
+        <li><strong>Type Object / Flyweight</strong> — 클래스당 <code>QMetaObject</code> 하나</li>
+        <li><strong>Command</strong> — <code>QSlotObject</code>, <code>QMetaCallEvent</code>. <code>call()</code>이 <code>execute()</code></li>
+        <li><strong>Adapter</strong> — 멤버 포인터·람다·moc 인덱스를 <code>call(receiver, argv)</code>로 통일</li>
+        <li><strong>Strategy</strong> — Direct / Queued / BlockingQueued</li>
+        <li><strong>Reactor</strong> — Queued의 이벤트 루프</li>
+        <li><strong>Pimpl</strong> — <code>QObjectPrivate</code></li>
+        <li><strong>Code Generation</strong> — moc</li>
+      </ul>
+      <div class="ascii">connect(...)
+    Adapter: QSlotObject 생성
+    Observer: Connection을 signalVector에 attach
+
+emit valueChanged(42)
+    Type Object: 시그널 번호
+    Observer: activate()가 리스트 순회
+    Strategy: Auto → Direct
+    Command: slotObj-&gt;call(...)</div>
+      <p>Mediator가 아닙니다. 발신 객체 안에 구독 목록이 있고, <code>QApplication</code>이 시그널을 중개하지 않습니다. Chain of Responsibility도 아닙니다. 슬롯 하나가 처리했다고 나머지를 막지 않습니다.</p>
+      <p class="tip">한 문장: Qt는 Observer를 moc 메타데이터와 Command 큐로 구현한 시스템입니다.</p>
+
+      <h2 id="s16">16. 한눈에 보는 전체 흐름</h2>
+      <div class="ascii">widget.h (Q_OBJECT, signals, slots)
+    → moc → moc_widget.cpp
+widget.ui
+    → uic → ui_widget.h
+
+컴파일 → .o 여러 개 → 링크 → 실행 파일
+실행 → QApplication::exec() 이벤트 루프
+
+Widget 생성
+    QWidget(parent) → new Ui::Widget → setupUi(this)
+    connect 두 줄 (예약만)
+
+사용자 드래그
+    QSlider::valueChanged(int)          Qt가 emit
+      argv로 인자 주소 포장
+      activate → Direct → slot_valueChanged
+        leText 갱신
+        emit sig_textChanged            우리가 emit
+          activate → slot_textChanged
+            leTextCopy 갱신</div>
+      <ol>
+        <li>보내는 객체, 시그널 주소, 받는 객체(<code>this</code>), 슬롯 주소를 <code>connect</code>한다.</li>
+        <li><code>connect</code>는 호출이 아니라 예약이다.</li>
+        <li>라이브러리 시그널은 Qt가 <code>emit</code>하고, 직접 만든 시그널은 직접 <code>emit</code>한다.</li>
+        <li>인자는 같아도 되고, 슬롯이 더 적어도 된다. 더 많으면 안 된다.</li>
+        <li>같은 스레드면 즉시 호출, 다른 스레드면 복사 후 이벤트 루프.</li>
+        <li>moc는 <code>.h</code>에서 <code>.cpp</code>를 만드는 코드 생성기다.</li>
+        <li><code>private</code>은 여전히 접근 제한이고, <code>slots:</code>는 옛 매크로용 표시에 가깝다.</li>
+      </ol>
+      <p class="lead">관련 예제 경로: <code>section03/P01_SignalSlot/</code></p>
+    </main>
+  </div>
+</body>
+</html>
