@@ -1,0 +1,3 @@
+add_subdirectory(P01_Console_Application)
+add_subdirectory(P02_GUI_Example)
+add_subdirectory(P03_GUI_app)
